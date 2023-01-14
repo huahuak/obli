@@ -1,0 +1,7 @@
+JAVA_VERSION="1.8.0_351"
+OS_NAME="Linux"
+OS_VERSION="2.6"
+OS_ARCH="aarch64"
+SUN_ARCH_ABI="gnu"
+SOURCE=".:git:c72692150ec4+"
+BUILD_TYPE="commercial"

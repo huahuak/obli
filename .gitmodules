@@ -1,0 +1,6 @@
+[submodule "obliop"]
+	path = obliop
+	url = https://github.com/huahuak/obliop
+[submodule "ta"]
+	path = ta
+	url = https://github.com/huahuak/ta

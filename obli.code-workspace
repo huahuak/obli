@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "spark",
+			"path": "obliop/src/main/java/org/kaihua/obliop"
+		},
+		{
+			"name": "client",
+			"path": "obliop/obliclient/src"
+		},
+		{
+			"name": "ta",
+			"path": "ta/src"
+		}
+	],
+	"settings": {
+		"java.compile.nullAnalysis.mode": "automatic"
+	}
+}
