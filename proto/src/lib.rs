@@ -18,6 +18,7 @@
 pub enum Command {
     IncValue,
     DecValue,
+    DataPush,
     Unknown,
 }
 
@@ -27,6 +28,7 @@ impl From<u32> for Command {
         match value {
             0 => Command::IncValue,
             1 => Command::DecValue,
+            2 => Command::DataPush,
             _ => Command::Unknown,
         }
     }
