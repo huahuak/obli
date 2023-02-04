@@ -1,11 +1,16 @@
 {
 	"folders": [
 		{
+			"name": "obli",
 			"path": "."
 		},
 		{
 			"name": "java",
 			"path": "obliop/src/main/java/org/kaihua/obliop"
+		},
+		{
+			"name": "proto",
+			"path": "proto/src"
 		},
 		{
 			"name": "client",
