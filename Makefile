@@ -90,7 +90,11 @@ dep: mkdir
 java: mkdir
 	make -C obliop java
 
-rust: client ta
+rust: proto client ta 
+
+.PHONY: proto
+proto:
+	make -C proto
 
 client: mkdir
 	@echo "${COLOR}\n// ------------------ BEGIN CLIENT ------------------ //\n${NC}"

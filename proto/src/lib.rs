@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+pub mod collection;
 pub mod context;
 
 pub enum Command {
