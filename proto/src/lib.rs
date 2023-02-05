@@ -20,9 +20,8 @@ pub mod context;
 pub mod sync;
 
 pub enum Command {
-  IncValue,
-  DecValue,
-  DataPush,
+  OpCtxExec,
+  DataSend,
   Unknown,
 }
 
@@ -30,10 +29,20 @@ impl From<u32> for Command {
   #[inline]
   fn from(value: u32) -> Command {
     match value {
-      0 => Command::IncValue,
-      1 => Command::DecValue,
-      2 => Command::DataPush,
+      0 => Command::OpCtxExec,
+      1 => Command::DataSend,
       _ => Command::Unknown,
+    }
+  }
+}
+
+impl From<Command> for u32 {
+  #[inline]
+  fn from(value: Command) -> u32 {
+    match value {
+      Command::OpCtxExec => 0,
+      Command::DataSend => 1,
+      Command::Unknown => 99,
     }
   }
 }
