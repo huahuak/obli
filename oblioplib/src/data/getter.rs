@@ -1,30 +1,32 @@
-use std::sync::Arc;
+use std::{
+  option::IntoIter,
+  sync::{Arc, Mutex},
+};
 
-use flatbuffers::{ForwardsUOffset, VectorIter};
+use flatbuffers::{ForwardsUOffset, Vector, VectorIter};
 use proto::{
   collection::vector_generated::org::kaihua::obliop::collection::fbs::{Field, Row, RowTable},
   context::ObliData,
 };
 
-use super::manager::{DataManager, DATA_MANAGER};
+use super::manager::DATA_MANAGER;
 
 pub struct DataIterator<'a> {
   data: &'a ObliData,
-  buf: Arc<Vec<u8>>,
-  row_iter: Option<VectorIter<'a, ForwardsUOffset<Row<'a>>>>,
+  buf: Arc<Mutex<Vec<u8>>>,
+  row_iter: Option<IntoIter<Vector<'a, ForwardsUOffset<Row<'a>>>>>,
 }
 
 impl<'a> DataIterator<'a> {
-  pub fn new(data: &'a ObliData) -> DataIterator {
+  fn new(data: &'a ObliData) -> DataIterator {
     let dm = DATA_MANAGER.exclusive_access();
-    let buf = Arc::clone(&dm.get_data_buffer_by_key(&data.id));
-    let r_table = flatbuffers::root::<RowTable>(&buf[..]).unwrap();
-    let row_iter = r_table.rows().unwrap().into_iter();
-    DataIterator {
+    let buf = Arc::clone(&dm.get_data(&data.id).unwrap().buffer);
+    let iter = DataIterator {
       data,
       buf,
       row_iter: None,
-    }
+    };
+    iter
   }
 }
 

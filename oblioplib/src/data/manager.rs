@@ -1,17 +1,15 @@
 use std::{
   collections::HashMap,
+  option,
   sync::{Arc, Mutex},
 };
 
 use lazy_static::lazy_static;
-use proto::{
-  collection::vector_generated::org::kaihua::obliop::collection::fbs::RowTable, context::ObliData,
-  sync::UPSafeCell,
-};
+use proto::{context::ObliData, sync::UPSafeCell};
 
 pub struct Data {
-  pub obli_data: Arc<Mutex<ObliData>>,
-  buffer: Arc<Vec<u8>>,
+  pub description: Arc<Mutex<ObliData>>,
+  pub buffer: Arc<Mutex<Vec<u8>>>,
 }
 
 pub struct DataManager {
@@ -25,24 +23,32 @@ impl DataManager {
     }
   }
 
-  pub fn insert(&mut self, key: &str, data: Arc<Mutex<ObliData>>, buffer: &[u8]) {
-    let mut k = String::new();
-    k.push_str(key);
+  /// insert will clone data
+  pub fn insert(&mut self, key: &str, data: &ObliData, buffer: &[u8]) {
+    assert!(
+      self.get_data_mut(key).is_none(),
+      "[data::manager::inser()] DATA_MANAGER already had the data with key '{}'",
+      key
+    );
+
+    let key = String::from(key);
+    let mut data = data.clone();
+    data.prepared = true;
     self.map.insert(
-      k,
+      key,
       Data {
-        obli_data: data,
-        buffer: Arc::new(buffer.to_vec()),
+        description: Arc::new(Mutex::new(data)),
+        buffer: Arc::new(Mutex::new(buffer.to_vec())),
       },
     );
   }
 
-  pub fn get_data_buffer_by_key(&self, key: &str) -> Arc<Vec<u8>> {
-    Arc::clone(&self.map.get(key).unwrap().buffer)
+  pub fn get_data_mut(&mut self, key: &str) -> Option<&mut Data> {
+    self.map.get_mut(key)
   }
 
-  pub fn get_map(&self) -> &HashMap<String, Data> {
-    &self.map
+  pub fn get_data(&self, key: &str) -> Option<&Data> {
+    self.map.get(key)
   }
 }
 
@@ -51,10 +57,9 @@ lazy_static! {
     unsafe { UPSafeCell::new(DataManager::new()) };
 }
 
-pub fn data_handler(data: Arc<Mutex<ObliData>>, buffer: &[u8]) {
+pub fn data_handler(data: &ObliData, buffer: &[u8]) {
   // trace_println!("[data::mod.rs] enter fn data_handler");
-  let key = String::from(&data.lock().unwrap().id);
   DATA_MANAGER
     .exclusive_access()
-    .insert(key.as_str(), data, buffer);
+    .insert(&data.id, data, buffer);
 }

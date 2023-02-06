@@ -14,7 +14,7 @@ pub struct RetObj {
   pub obli_op_id: i32,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct ObliData {
   pub name: String,
   pub id: String,

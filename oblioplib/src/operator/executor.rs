@@ -1,11 +1,18 @@
-use proto::{
-  collection::vector_generated::org::kaihua::obliop::collection::fbs::RowTable,
-  context::{
-    Context,
-    ExprType::{HASH, MOD, SORT},
-    Expression,
-  },
+use std::{
+  borrow::{Borrow, BorrowMut},
+  rc::Rc,
+  sync::Arc,
 };
+
+use proto::context::{
+  Context,
+  ExprType::{HASH, MOD, SORT},
+  Expression, ObliData,
+};
+
+use crate::data::manager::DATA_MANAGER;
+
+use super::hasher::hash_exec;
 
 /**
  * @author kahua.li
@@ -17,9 +24,24 @@ pub fn execute(expr: &Expression) {
   for child in &expr.children {
     execute(&child);
   }
+  let mut dm = DATA_MANAGER.exclusive_access();
+  let input = Arc::clone(
+    &dm
+      .get_data(&expr.input.as_ref().borrow().id)
+      .unwrap()
+      .description,
+  );
+  let output = Arc::clone(
+    &dm
+      .get_data_mut(&expr.output.as_ref().borrow().id)
+      .unwrap()
+      .description,
+  );
   match expr.typ {
     MOD => {}
-    HASH => {}
+    HASH => {
+      hash_exec(&input.lock().unwrap(), &output.lock().unwrap());
+    }
     SORT => {}
     _ => {
       panic!(
@@ -30,29 +52,23 @@ pub fn execute(expr: &Expression) {
   }
 }
 
+fn prepare_data(expr: &Expression) {
+  for child in &expr.children {
+    prepare_data(expr);
+  }
+  let mut dm = DATA_MANAGER.exclusive_access();
+  let input = expr.input.as_ref().borrow();
+  match dm.get_data_mut(&input.id) {
+    Some(target) => target.description.lock().unwrap().in_use += 1,
+    None => dm.insert(&input.id, &input, &[]),
+  }
+  let output = expr.output.as_ref().borrow();
+  dm.insert(&output.id, &output, &[]);
+}
+
 pub fn obli_op_ctx_exec(ctx: &mut Context) {
-  // trace_println!("[operator::mod.rs] enter fn obli_ob_ctx_exec");
-  // trace_println!("[operator::mod.rs] ctx is {:#?}", ctx);
-
-  for expr in &ctx.expressions {}
-
-  // let dm = data::DATA_MANAGER.exclusive_access();
-  // let buf = dm.get_data_buffer_by_key(dm.get_map().keys().next().unwrap());
-  // let v = flatbuffers::root::<RowTable>(buf).unwrap();
-  // unsafe {
-  //   trace_println!(
-  //     "[TA::operator::mod.rs] v is '{}'",
-  //     v.rows()
-  //       .unwrap()
-  //       .get(0)
-  //       .fields()
-  //       .unwrap()
-  //       .get(0)
-  //       .value_as_string_value()
-  //       .unwrap()
-  //       .value()
-  //       .unwrap()
-  //   );
-  // }
-  // drop(dm);
+  for expr in &ctx.expressions {
+    prepare_data(expr);
+    execute(expr);
+  }
 }

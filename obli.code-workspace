@@ -20,6 +20,10 @@
 			"name": "ta",
 			"path": "ta/src"
 		}
+		{
+			"name": "oblioplib",
+			"path": "oblioplib/src"
+		}
 	],
 	"settings": {
 		"java.compile.nullAnalysis.mode": "automatic",
