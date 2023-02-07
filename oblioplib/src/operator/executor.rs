@@ -1,9 +1,4 @@
-use std::{
-  borrow::{Borrow, BorrowMut},
-  error,
-  rc::Rc,
-  sync::Arc,
-};
+use std::sync::Arc;
 
 use proto::context::{
   Context,
@@ -40,11 +35,11 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
   );
   drop(dm);
   match expr.typ {
-    MOD => {}
+    // MOD => {}
     HASH => {
       hash_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
     }
-    SORT => {}
+    // SORT => {}
     _ => {
       // panic!(
       //   "[executor.rs::execute()] expr typ of {:#?} is unsupported !!!",
