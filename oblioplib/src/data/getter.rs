@@ -3,9 +3,9 @@ use std::{
   sync::{Arc, Mutex},
 };
 
-use flatbuffers::{ForwardsUOffset, Vector, VectorIter};
+use flatbuffers::{ForwardsUOffset, Vector};
 use proto::{
-  collection::vector_generated::org::kaihua::obliop::collection::fbs::{Field, Row, RowTable},
+  collection::vector_generated::org::kaihua::obliop::collection::fbs::{Field, Row},
   context::ObliData,
 };
 
@@ -26,6 +26,7 @@ impl<'a> DataIterator<'a> {
       buf,
       row_iter: None,
     };
+    drop(dm);
     iter
   }
 }

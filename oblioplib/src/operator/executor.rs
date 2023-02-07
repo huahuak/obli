@@ -1,5 +1,6 @@
 use std::{
   borrow::{Borrow, BorrowMut},
+  error,
   rc::Rc,
   sync::Arc,
 };
@@ -20,9 +21,9 @@ use super::hasher::hash_exec;
  * @date 2023/02/04
  **/
 
-pub fn execute(expr: &Expression) {
+pub fn execute(expr: &Expression) -> Result<(), &'static str> {
   for child in &expr.children {
-    execute(&child);
+    execute(&child)?;
   }
   let mut dm = DATA_MANAGER.exclusive_access();
   let input = Arc::clone(
@@ -37,38 +38,45 @@ pub fn execute(expr: &Expression) {
       .unwrap()
       .description,
   );
+  drop(dm);
   match expr.typ {
     MOD => {}
     HASH => {
-      hash_exec(&input.lock().unwrap(), &output.lock().unwrap());
+      hash_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
     }
     SORT => {}
     _ => {
-      panic!(
-        "[executor.rs::execute()] expr typ of {:#?} is unsupported !!!",
-        expr.typ
-      );
+      // panic!(
+      //   "[executor.rs::execute()] expr typ of {:#?} is unsupported !!!",
+      //   expr.typ
+      // );
+      return Err("[executor.rs::execute()] expr typ of {:#?} is unsupported !!!");
     }
   }
+  Ok(())
 }
 
-fn prepare_data(expr: &Expression) {
-  for child in &expr.children {
-    prepare_data(expr);
-  }
+fn prepare_data(expr: &Expression) -> Result<(), &'static str> {
   let mut dm = DATA_MANAGER.exclusive_access();
   let input = expr.input.as_ref().borrow();
   match dm.get_data_mut(&input.id) {
     Some(target) => target.description.lock().unwrap().in_use += 1,
-    None => dm.insert(&input.id, &input, &[]),
+    None => dm.insert(&input.id, &input, &[])?,
   }
   let output = expr.output.as_ref().borrow();
-  dm.insert(&output.id, &output, &[]);
+  dm.insert(&output.id, &output, &[])?;
+  drop(dm);
+  // for child must be exec after insert output operation
+  for child in &expr.children {
+    prepare_data(child)?;
+  }
+  Ok(())
 }
 
-pub fn obli_op_ctx_exec(ctx: &mut Context) {
+pub fn obli_op_ctx_exec(ctx: &mut Context) -> Result<(), &'static str> {
   for expr in &ctx.expressions {
-    prepare_data(expr);
-    execute(expr);
+    prepare_data(expr)?;
+    execute(expr)?;
   }
+  Ok(())
 }

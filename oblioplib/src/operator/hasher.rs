@@ -13,16 +13,20 @@ use proto::{
 
 use crate::data::manager::DATA_MANAGER;
 
-pub fn hash_exec(input: &ObliData, output: &ObliData) {
-  assert!(
-    input.prepared,
-    "[hasher.rs::hash_exec()] input isn't prepared !!!"
-  );
+pub fn hash_exec(input: &ObliData, output: &ObliData) -> Result<(), &'static str> {
+  // assert!(
+  //   input.prepared,
+  //   "[hasher.rs::hash_exec()] input isn't prepared !!!"
+  // );
+
+  if !input.prepared {
+    return Err("[hasher.rs::hash_exec()] input isn't prepared !!!");
+  }
 
   let mut hasher = DefaultHasher::new();
 
   let dm = DATA_MANAGER.exclusive_access();
-  let buf = &dm.get_data(&input.id).unwrap().buffer.lock().unwrap();
+  let buf = dm.get_data(&input.id).unwrap().buffer.lock().unwrap();
 
   // fbs
   let mut fbb = flatbuffers::FlatBufferBuilder::with_capacity(1024);
@@ -38,10 +42,15 @@ pub fn hash_exec(input: &ObliData, output: &ObliData) {
           i.hash(&mut hasher);
           hash_result = hasher.finish();
         }
+        FieldUnion::StringValue => {
+          let s = field.value_as_string_value().unwrap().value();
+          s.hash(&mut hasher);
+          hash_result = hasher.finish();
+        }
         // FieldUnion::DoubleValue => {}
-        //  FieldUnion::StringValue => {}
         _ => {
-          panic!()
+          return Err("[operator::hasher::hash_exec()] unsupported type can't process");
+          // panic!()
         }
       }
 
@@ -81,6 +90,8 @@ pub fn hash_exec(input: &ObliData, output: &ObliData) {
   let buf_result = fbb.finished_data();
 
   // release immutable shared ref `dm`
+  drop(buf);
+  drop(dm);
   let mut dm = DATA_MANAGER.exclusive_access();
 
   // push fbs buf_result to output data
@@ -89,6 +100,9 @@ pub fn hash_exec(input: &ObliData, output: &ObliData) {
       .iter()
       .for_each(|item| data.buffer.lock().unwrap().push(*item));
   } else {
-    panic!("[operator::hasher::hash_exec()] output data don't exist");
+    // panic!("[operator::hasher::hash_exec()] output data don't exist");
+    return Err("[operator::hasher::hash_exec()] output data don't exist");
   }
+  drop(dm);
+  Ok(())
 }
