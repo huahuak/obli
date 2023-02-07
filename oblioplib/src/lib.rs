@@ -23,6 +23,7 @@ mod tests {
   fn it_works() {
     let data_json =  "{\"name\":\"NOT DEFINE\",\"id\":\"840d3ef9-6165-4cd8-8cf1-4a4f627cfbad\",\"addr\":281473501987684,\"length\":108,\"prepared\":true,\"in_use\":0}";
     let ctx_json = "{\"expressions\":[{\"id\":\"bd054a2a-6f59-42af-9db0-196c24f7057b\",\"typ\":\"HASH\",\"input\":{\"name\":\"NOT DEFINE\",\"id\":\"840d3ef9-6165-4cd8-8cf1-4a4f627cfbad\",\"addr\":281473501987684,\"length\":108,\"prepared\":true,\"in_use\":0},\"output\":{\"name\":\"NOT DEFINE\",\"id\":\"b9e5d25c-32a9-4a89-b215-0b02188c6aa4\",\"addr\":0,\"length\":0,\"prepared\":false,\"in_use\":0},\"children\":[{\"id\":\"f2dcb282-3d6a-470f-9894-39060e231511\",\"typ\":\"MOD\",\"input\":{\"name\":\"NOT DEFINE\",\"id\":\"b9e5d25c-32a9-4a89-b215-0b02188c6aa4\",\"addr\":0,\"length\":0,\"prepared\":false,\"in_use\":0},\"output\":{\"name\":\"NOT DEFINE\",\"id\":\"0d582df9-b61f-4310-95e8-c0f119c51af3\",\"addr\":0,\"length\":0,\"prepared\":false,\"in_use\":0},\"children\":[]}]}]}";
+    let target_json = "{\"name\":\"NOT DEFINE\",\"id\":\"b9e5d25c-32a9-4a89-b215-0b02188c6aa4\",\"addr\":281473501987684,\"length\":108,\"prepared\":true,\"in_use\":0}";
     let fbs_buf = [
       4u8, 0, 0, 0, 202, 255, 255, 255, 4, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 218, 255, 255, 255, 4,
       0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 8, 0, 14, 0, 7, 0, 8, 0, 8, 0, 0, 0, 0, 0, 0, 3, 12, 0, 0,
@@ -35,7 +36,8 @@ mod tests {
     let mut ctx: Context = serde_json::from_str(ctx_json).unwrap();
     obli_op_ctx_exec(&mut ctx).unwrap();
     let mut output = [0u8; 1024];
-    get_data_handle(&data, &mut output).unwrap();
+    let target: ObliData = serde_json::from_str(target_json).unwrap();
+    get_data_handle(&target, &mut output ).unwrap();
     let mut cnt = 0;
     loop {
       match LOGGER.lock().unwrap().next() {

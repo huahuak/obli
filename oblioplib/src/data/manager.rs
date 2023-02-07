@@ -6,7 +6,7 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use proto::{context::ObliData, sync::UPSafeCell};
+use proto::{context::ObliData, sync::UPSafeCell, util};
 
 use crate::logger::{Logger, LOGGER};
 
@@ -86,7 +86,10 @@ pub fn get_data_handle(target: &ObliData, output: &mut [u8]) -> Result<(), &'sta
     .lock()
     .unwrap()
     .log(proto::collection::fbs_vec::FbsRowTable::sprint_row_table_fbs(&buf.lock().unwrap()));
-  LOGGER.lock().unwrap().log("something agter".to_string());
+  LOGGER
+    .lock()
+    .unwrap()
+    .log(util::sprint_byte(&buf.lock().unwrap()));
 
   drop(dm);
   Ok(())

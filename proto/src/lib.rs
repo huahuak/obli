@@ -18,6 +18,7 @@
 pub mod collection;
 pub mod context;
 pub mod sync;
+pub mod util;
 
 pub enum Command {
   OpCtxExec,
