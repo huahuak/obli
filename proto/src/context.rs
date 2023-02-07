@@ -24,6 +24,19 @@ pub struct ObliData {
   pub in_use: i32,
 }
 
+impl ObliData {
+  pub fn empty_with_uuid(uuid: String) -> ObliData {
+    ObliData {
+      name: String::new(),
+      id: uuid,
+      addr: 0,
+      length: 0,
+      prepared: false,
+      in_use: 0,
+    }
+  }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub enum ExprType {
   MOD,

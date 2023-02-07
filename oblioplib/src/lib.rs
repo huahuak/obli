@@ -13,7 +13,11 @@ pub mod operator;
 mod tests {
   use proto::context::{Context, ObliData};
 
-  use crate::{data::manager::data_handler, operator::executor::obli_op_ctx_exec};
+  use crate::{
+    data::manager::{get_data_handle, push_data_handler},
+    logger::LOGGER,
+    operator::executor::obli_op_ctx_exec,
+  };
 
   #[test]
   fn it_works() {
@@ -27,8 +31,20 @@ mod tests {
       116, 101, 115, 116, 0, 0,
     ];
     let data: ObliData = serde_json::from_str(data_json).unwrap();
-    data_handler(&data, &fbs_buf).unwrap();
+    push_data_handler(&data, &fbs_buf).unwrap();
     let mut ctx: Context = serde_json::from_str(ctx_json).unwrap();
     obli_op_ctx_exec(&mut ctx).unwrap();
+    let mut output = [0u8; 1024];
+    get_data_handle(&data, &mut output).unwrap();
+    let mut cnt = 0;
+    loop {
+      match LOGGER.lock().unwrap().next() {
+        Some(info) => {
+          println!("[{}] {}", cnt, info);
+          cnt += 1;
+        }
+        None => break,
+      }
+    }
   }
 }

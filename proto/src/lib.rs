@@ -22,6 +22,7 @@ pub mod sync;
 pub enum Command {
   OpCtxExec,
   DataSend,
+  DataGet,
   Unknown,
 }
 
@@ -31,6 +32,7 @@ impl From<u32> for Command {
     match value {
       0 => Command::OpCtxExec,
       1 => Command::DataSend,
+      2 => Command::DataGet,
       _ => Command::Unknown,
     }
   }
@@ -42,6 +44,7 @@ impl From<Command> for u32 {
     match value {
       Command::OpCtxExec => 0,
       Command::DataSend => 1,
+      Command::DataGet => 2,
       Command::Unknown => 99,
     }
   }

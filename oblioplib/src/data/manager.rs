@@ -1,12 +1,14 @@
 use std::{
+  borrow::Borrow,
   collections::HashMap,
+  result,
   sync::{Arc, Mutex},
 };
 
 use lazy_static::lazy_static;
 use proto::{context::ObliData, sync::UPSafeCell};
 
-use crate::logger::LOGGER;
+use crate::logger::{Logger, LOGGER};
 
 #[derive(Debug)]
 pub struct Data {
@@ -65,10 +67,27 @@ lazy_static! {
     unsafe { UPSafeCell::new(DataManager::new()) };
 }
 
-pub fn data_handler(data: &ObliData, buffer: &[u8]) -> Result<(), &'static str> {
+pub fn push_data_handler(data: &ObliData, buffer: &[u8]) -> Result<(), &'static str> {
   // trace_println!("[data::mod.rs] enter fn data_handler");
   DATA_MANAGER
     .exclusive_access()
     .insert(&data.id, data, buffer)?;
+  Ok(())
+}
+
+pub fn get_data_handle(target: &ObliData, output: &mut [u8]) -> Result<(), &'static str> {
+  let dm = DATA_MANAGER.exclusive_access();
+  let buf = &dm.get_data(&target.id).unwrap().buffer;
+  let buf_len = buf.lock().unwrap().len();
+  output[..buf_len].copy_from_slice(&buf.lock().unwrap());
+
+  LOGGER.lock().unwrap().log(format!("len is {}", buf_len));
+  LOGGER
+    .lock()
+    .unwrap()
+    .log(proto::collection::fbs_vec::FbsRowTable::sprint_row_table_fbs(&buf.lock().unwrap()));
+  LOGGER.lock().unwrap().log("something agter".to_string());
+
+  drop(dm);
   Ok(())
 }
