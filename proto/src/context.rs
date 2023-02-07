@@ -25,10 +25,10 @@ pub struct ObliData {
 }
 
 impl ObliData {
-  pub fn empty_with_uuid(uuid: String) -> ObliData {
+  pub fn empty_with_uuid(uuid: &String) -> ObliData {
     ObliData {
       name: String::new(),
-      id: uuid,
+      id: String::from(uuid),
       addr: 0,
       length: 0,
       prepared: false,

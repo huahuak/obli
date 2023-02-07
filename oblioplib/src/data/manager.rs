@@ -80,17 +80,6 @@ pub fn get_data_handle(target: &ObliData, output: &mut [u8]) -> Result<(), &'sta
   let buf = &dm.get_data(&target.id).unwrap().buffer;
   let buf_len = buf.lock().unwrap().len();
   output[..buf_len].copy_from_slice(&buf.lock().unwrap());
-
-  LOGGER.lock().unwrap().log(format!("len is {}", buf_len));
-  LOGGER
-    .lock()
-    .unwrap()
-    .log(proto::collection::fbs_vec::FbsRowTable::sprint_row_table_fbs(&buf.lock().unwrap()));
-  LOGGER
-    .lock()
-    .unwrap()
-    .log(util::sprint_byte(&buf.lock().unwrap()));
-
   drop(dm);
   Ok(())
 }
