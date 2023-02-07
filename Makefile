@@ -62,8 +62,7 @@ qemu:
          \
         -object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0,max-bytes=1024,period=1000 -fsdev local,id=fsdev0,path=/home/huahua/Projects/optee/optee_rust/out/,security_model=none -device virtio-9p-device,fsdev=fsdev0,mount_tag=host -netdev user,id=vmnic,hostfwd=tcp::12345-:12345 -device virtio-net-device,netdev=vmnic
 
-# all: mkdir spark dep java rust 
-all: mkdir spark java rust 
+all: mkdir spark dep java rust 
 	@echo "${COLOR}\n// ------------------ END ALL ------------------ //\n${NC}"
 
 mkdir:
@@ -85,8 +84,8 @@ mkdir:
 		cp -r ./res/* ${TA_OUT_PATH};\
 	fi
 
-# dep: mkdir
-# 	make -C obliop dep
+dep: mkdir
+	make -C obliop dep
 
 java: mkdir
 	make -C obliop java
