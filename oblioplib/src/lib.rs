@@ -37,8 +37,10 @@ mod tests {
     obli_op_ctx_exec(&mut ctx).unwrap();
     let mut output = [0u8; 1024];
     let target: ObliData = serde_json::from_str(target_json).unwrap();
-    get_data_handle(&target, &mut output ).unwrap();
+    get_data_handle(&target, &mut output).unwrap();
+
     let mut cnt = 0;
+    print!("\x1b[0;37m");
     loop {
       match LOGGER.lock().unwrap().next() {
         Some(info) => {
@@ -48,5 +50,6 @@ mod tests {
         None => break,
       }
     }
+  print!("\x1b[0m");
   }
 }
