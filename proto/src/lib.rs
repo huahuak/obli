@@ -15,11 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use serde::{Deserialize, Serialize};
+
 pub mod collection;
 pub mod context;
 pub mod sync;
 pub mod util;
 
+
+#[derive(Deserialize, Serialize, Debug)]
 pub enum Command {
   OpCtxExec,
   DataSend,

@@ -50,6 +50,6 @@ mod tests {
         None => break,
       }
     }
-  print!("\x1b[0m");
+    print!("\x1b[0m");
   }
 }

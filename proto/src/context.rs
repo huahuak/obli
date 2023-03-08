@@ -1,6 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use serde::{Deserialize, Serialize};
+use serde::{de::value::BoolDeserializer, Deserialize, Serialize};
+
+use crate::Command;
 
 /**
  * @author kahua.li
@@ -57,4 +59,11 @@ pub struct Expression {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Context {
   pub expressions: Vec<Expression>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TaCallerInfo {
+  pub method: Command,
+  pub info: String,
+  pub ok: bool,
 }

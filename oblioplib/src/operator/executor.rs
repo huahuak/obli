@@ -41,10 +41,6 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
     }
     // SORT => {}
     _ => {
-      // panic!(
-      //   "[executor.rs::execute()] expr typ of {:#?} is unsupported !!!",
-      //   expr.typ
-      // );
       return Err("[executor.rs::execute()] expr typ of {:#?} is unsupported !!!");
     }
   }
