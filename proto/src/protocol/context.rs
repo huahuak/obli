@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use serde::{de::value::BoolDeserializer, Deserialize, Serialize};
 
@@ -46,6 +46,12 @@ pub enum ExprType {
   SORT,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
+pub enum ExtraExprInfo {
+  SortOrder,
+  ModNumber,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Expression {
   pub id: String,
@@ -54,6 +60,7 @@ pub struct Expression {
   pub input: Rc<RefCell<ObliData>>,
   pub output: Rc<RefCell<ObliData>>,
   pub children: Vec<Expression>,
+  pub info: HashMap<ExtraExprInfo, String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -61,6 +68,7 @@ pub struct Context {
   pub expressions: Vec<Expression>,
 }
 
+// ------------------ only use in client and ta ------------------ //
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TaCallerInfo {
   pub method: Command,

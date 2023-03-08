@@ -7,7 +7,7 @@ use std::{
 
 use lazy_static::lazy_static;
 use proto::{
-  context::{ObliData, TaCallerInfo},
+  protocol::context::{ObliData, TaCallerInfo},
   sync::UPSafeCell,
   util,
 };

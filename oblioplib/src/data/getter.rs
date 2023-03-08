@@ -1,40 +1,88 @@
-use std::{
-  option::IntoIter,
-  sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use flatbuffers::{ForwardsUOffset, Vector};
 use proto::{
-  collection::vector_generated::org::kaihua::obliop::collection::fbs::{Field, Row},
-  context::ObliData,
+  collection::vector_generated::org::kaihua::obliop::collection::fbs::{FieldUnion, RowTable},
+  protocol::context::ObliData,
 };
 
 use super::manager::DATA_MANAGER;
 
-pub struct DataIterator<'a> {
-  data: &'a ObliData,
-  buf: Arc<Mutex<Vec<u8>>>,
-  row_iter: Option<IntoIter<Vector<'a, ForwardsUOffset<Row<'a>>>>>,
+pub enum Item {
+  Int(i32),
+  Str(String),
+  Double(f64),
 }
 
-impl<'a> DataIterator<'a> {
-  fn new(data: &'a ObliData) -> DataIterator {
+pub struct Record {
+  pub items: Vec<Item>,
+}
+
+pub struct DataIterator {
+  buf: Arc<Mutex<Vec<u8>>>,
+  cur: usize,
+  size: usize,
+}
+
+impl DataIterator {
+  pub fn new(data: &ObliData) -> DataIterator {
     let dm = DATA_MANAGER.exclusive_access();
     let buf = Arc::clone(&dm.get_data(&data.id).unwrap().buffer);
-    let iter = DataIterator {
-      data,
-      buf,
-      row_iter: None,
-    };
+    let size = flatbuffers::root::<RowTable>(buf.lock().unwrap().as_ref())
+      .unwrap()
+      .rows()
+      .unwrap()
+      .len();
+    let iter = DataIterator { buf, cur: 0, size };
     drop(dm);
     iter
   }
 }
 
-impl<'a> Iterator for DataIterator<'a> {
-  type Item = Field<'a>;
+impl Iterator for DataIterator {
+  type Item = Record;
 
   fn next(&mut self) -> Option<Self::Item> {
-    None
+    if self.cur >= self.size {
+      return None;
+    }
+    let buf = self.buf.lock().unwrap();
+    let row_table = flatbuffers::root::<RowTable>(buf.as_ref())
+      .unwrap()
+      .rows()
+      .unwrap();
+    let mut ret = Record { items: vec![] };
+    for field in row_table.get(self.cur).fields().unwrap() {
+      match field.value_type() {
+        FieldUnion::IntValue => {
+          let i = field.value_as_int_value().unwrap().value();
+          ret.items.push(Item::Int(i))
+        }
+        FieldUnion::StringValue => {
+          let s = field.value_as_string_value().unwrap().value().unwrap();
+          ret.items.push(Item::Str(String::from(s)));
+        }
+        FieldUnion::DoubleValue => {
+          let f = field.value_as_double_value().unwrap().value();
+          ret.items.push(Item::Double(f));
+        }
+        _ => {
+          panic!("[ta::getter.rs::next()] type not found implement")
+        }
+      }
+    }
+    Some(ret)
+  }
+}
+
+impl From<&mut DataIterator> for Vec<Record> {
+  fn from(iter: &mut DataIterator) -> Self {
+    let mut ret = vec![];
+    loop {
+      match iter.next() {
+        Some(r) => ret.push(r),
+        None => break,
+      }
+    }
+    ret
   }
 }

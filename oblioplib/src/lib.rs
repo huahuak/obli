@@ -11,7 +11,7 @@ pub mod operator;
 
 #[cfg(test)]
 mod tests {
-  use proto::context::{Context, ObliData};
+  use proto::protocol::context::{Context, ObliData};
 
   use crate::{
     data::manager::{get_data_handle, push_data_handler},

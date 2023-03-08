@@ -8,7 +8,7 @@ use proto::{
   collection::vector_generated::org::kaihua::obliop::collection::fbs::{
     Field, FieldArgs, FieldUnion, IntValue, IntValueArgs, Row, RowArgs, RowTable, RowTableArgs,
   },
-  context::ObliData,
+  protocol::context::ObliData,
 };
 
 use crate::data::manager::DATA_MANAGER;

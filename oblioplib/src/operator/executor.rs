@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use proto::context::{
+use proto::protocol::context::{
   Context,
   ExprType::{HASH, MOD, SORT},
   Expression, ObliData,
@@ -8,7 +8,7 @@ use proto::context::{
 
 use crate::data::manager::DATA_MANAGER;
 
-use super::hasher::hash_exec;
+use super::{hasher::hash_exec, sorter::{self, sort_exec}};
 
 /**
  * @author kahua.li
@@ -39,7 +39,9 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
     HASH => {
       hash_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
     }
-    // SORT => {}
+    SORT => {
+      sort_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
+    }
     _ => {
       return Err("[executor.rs::execute()] expr typ of {:#?} is unsupported !!!");
     }
@@ -47,6 +49,7 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
   Ok(())
 }
 
+// @audit some bug, we should prepare child data first, input must be found
 fn prepare_data(expr: &Expression) -> Result<(), &'static str> {
   let mut dm = DATA_MANAGER.exclusive_access();
   let input = expr.input.as_ref().borrow();
