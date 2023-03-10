@@ -14,15 +14,6 @@ use proto::{
 use crate::data::manager::DATA_MANAGER;
 
 pub fn hash_exec(input: &ObliData, output: &ObliData) -> Result<(), &'static str> {
-  // assert!(
-  //   input.prepared,
-  //   "[hasher.rs::hash_exec()] input isn't prepared !!!"
-  // );
-
-  if !input.prepared {
-    return Err("[hasher.rs::hash_exec()] input isn't prepared !!!");
-  }
-
   let mut hasher = DefaultHasher::new();
 
   let dm = DATA_MANAGER.exclusive_access();

@@ -14,7 +14,7 @@ mod tests {
   use proto::protocol::context::{Context, ObliData};
 
   use crate::{
-    data::manager::{get_data_handle, push_data_handler},
+    data::manager::{get_data_handler, push_data_handler},
     logger::LOGGER,
     operator::executor::obli_op_ctx_exec,
   };
@@ -36,8 +36,9 @@ mod tests {
     let mut ctx: Context = serde_json::from_str(ctx_json).unwrap();
     obli_op_ctx_exec(&mut ctx).unwrap();
     let mut output = [0u8; 1024];
+    let mut info = [0u8, 128];
     let target: ObliData = serde_json::from_str(target_json).unwrap();
-    get_data_handle(&target, &mut output).unwrap();
+    get_data_handler(&target, &mut info ,&mut output).unwrap();
 
     let mut cnt = 0;
     print!("\x1b[0;37m");

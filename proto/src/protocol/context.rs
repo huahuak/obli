@@ -27,6 +27,20 @@ pub struct ObliData {
 }
 
 impl ObliData {
+  pub fn increase_in_use(&mut self) {
+    self.in_use += 1;
+  }
+
+  pub fn decrease_in_use(&mut self) -> Result<(), &'static str> {
+    self.in_use -= 1;
+    if self.in_use < 0 {
+      return Err("[proto::context.rs::decrease_in_use()] in_use is smaller than 0, it is error!");
+    }
+    Ok(())
+  }
+}
+
+impl ObliData {
   pub fn empty_with_uuid(uuid: &String) -> ObliData {
     ObliData {
       name: String::new(),

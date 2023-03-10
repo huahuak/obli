@@ -31,8 +31,14 @@ impl DataManager {
     }
   }
 
-  /// insert will clone data
-  pub fn insert(&mut self, key: &str, data: &ObliData, buffer: &[u8]) -> Result<(), &'static str> {
+  /// insert will clone data struct
+  pub fn insert(
+    &mut self,
+    key: &str,
+    data: &ObliData,
+    buffer: &[u8],
+    is_prepared: bool,
+  ) -> Result<(), &'static str> {
     // assert!(
     //   self.get_data_mut(key).is_none(),
     //   "[data::manager::inser()] DATA_MANAGER already had the data with key '{}'",
@@ -46,7 +52,7 @@ impl DataManager {
 
     let key = String::from(key);
     let mut data = data.clone();
-    data.prepared = true;
+    data.prepared = is_prepared;
     self.map.insert(
       key,
       Data {
@@ -75,11 +81,11 @@ pub fn push_data_handler(data: &ObliData, buffer: &[u8]) -> Result<(), &'static 
   // trace_println!("[data::mod.rs] enter fn data_handler");
   DATA_MANAGER
     .exclusive_access()
-    .insert(&data.id, data, buffer)?;
+    .insert(&data.id, data, buffer, true)?;
   Ok(())
 }
 
-pub fn get_data_handle(
+pub fn get_data_handler(
   target: &ObliData,
   info: &mut [u8],
   output: &mut [u8],
