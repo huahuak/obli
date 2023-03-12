@@ -1,4 +1,5 @@
 #![feature(map_try_insert)]
+#![feature(total_cmp)]
 pub mod data;
 pub mod logger;
 pub mod operator;

@@ -1,2 +1,3 @@
 pub mod manager;
-pub mod getter;
+pub mod reader;
+pub mod writer;

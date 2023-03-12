@@ -83,8 +83,8 @@ pub fn hash_exec(input: &ObliData, output: &ObliData) -> Result<(), &'static str
   // release immutable shared ref `dm`
   drop(buf);
   drop(dm);
-  let mut dm = DATA_MANAGER.exclusive_access();
 
+  let mut dm = DATA_MANAGER.exclusive_access();
   // push fbs buf_result to output data
   if let Some(data) = dm.get_data_mut(&output.id) {
     buf_result

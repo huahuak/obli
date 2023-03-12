@@ -112,6 +112,7 @@ ta: mkdir
 spark: mkdir
 # copy spark jars
 	@echo "${COLOR}\n// ------------------ BEGIN SPARK ------------------ //\n${NC}"
+	make -C ${SPARK} obliop examples sql
 	cp -rf ${SPARK}/dist ${SPARK_OUT_PATH}
 	cp -f ${SPARK}/run.sh ${SPARK_OUT_PATH}
 

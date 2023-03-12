@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use serde::{de::value::BoolDeserializer, Deserialize, Serialize};
@@ -80,6 +81,14 @@ pub struct Expression {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Context {
   pub expressions: Vec<Expression>,
+}
+
+// ------------------ extra info ------------------ //
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SortOrderInfo {
+  pub position: i32,
+  // 1 is aescending, -1 is descending
+  pub directio: i32,
 }
 
 // ------------------ only use in client and ta ------------------ //

@@ -5,17 +5,7 @@ use proto::{
   protocol::context::ObliData,
 };
 
-use super::manager::DATA_MANAGER;
-
-pub enum Item {
-  Int(i32),
-  Str(String),
-  Double(f64),
-}
-
-pub struct Record {
-  pub items: Vec<Item>,
-}
+use super::manager::{DATA_MANAGER, Record, Item};
 
 pub struct DataIterator {
   buf: Arc<Mutex<Vec<u8>>>,

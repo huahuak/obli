@@ -1,18 +1,23 @@
 use std::{
-  borrow::Borrow,
   collections::HashMap,
-  result,
   sync::{Arc, Mutex},
 };
 
 use lazy_static::lazy_static;
-use proto::{
-  protocol::context::{ObliData, TaCallerInfo},
-  sync::UPSafeCell,
-  util,
-};
+use proto::protocol::context::{ObliData, TaCallerInfo};
+use proto::sync::UPSafeCell;
 
-use crate::logger::{self, Logger, LOGGER};
+use crate::logger::LOGGER;
+
+pub enum Item {
+  Int(i32),
+  Str(String),
+  Double(f64),
+}
+
+pub struct Record {
+  pub items: Vec<Item>,
+}
 
 #[derive(Debug)]
 pub struct Data {

@@ -2,15 +2,15 @@ use std::sync::Arc;
 
 use proto::protocol::context::{
   Context,
-  ExprType::{HASH, MOD, SORT},
-  Expression, ObliData,
+  ExprType::{HASH, SORT},
+  Expression, ExtraExprInfo, SortOrderInfo,
 };
 
 use crate::data::manager::DATA_MANAGER;
 
 use super::{
   hasher::hash_exec,
-  sorter::{self, sort_exec},
+  sorter::{sort_exec},
 };
 
 /**
@@ -37,31 +37,37 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
       .description,
   );
   drop(dm);
-  // the expr has been executed by other tree
+
   if !input.lock().unwrap().prepared {
     return Err("[hasher.rs::hash_exec()] input isn't prepared !!!");
   }
   input.lock().unwrap().decrease_in_use()?;
+
+  // the expr has been executed by other tree
   if output.lock().unwrap().prepared {
     return Ok(());
   }
+
   match expr.typ {
     // MOD => {}
     HASH => {
       hash_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
     }
     SORT => {
-      sort_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
+      let sort_order_str = expr.info.get(&ExtraExprInfo::SortOrder).unwrap();
+      let ordering: Vec<SortOrderInfo> = serde_json::from_str(&sort_order_str).unwrap();
+      sort_exec(&input.lock().unwrap(), &output.lock().unwrap(), ordering)?;
     }
     _ => {
       return Err("[executor.rs::execute()] expr typ of {:#?} is unsupported !!!");
     }
   }
+
   output.lock().unwrap().prepared = true;
+
   Ok(())
 }
 
-// @audit some bug, we should prepare child data first, input must be found
 fn prepare_data(expr: &Expression) -> Result<(), &'static str> {
   for child in &expr.children {
     prepare_data(child)?;
@@ -71,7 +77,7 @@ fn prepare_data(expr: &Expression) -> Result<(), &'static str> {
   match dm.get_data_mut(&input.id) {
     Some(target) => target.description.lock().unwrap().increase_in_use(),
     None => return Err(
-      "[TA::executor.rs::prepare_data()] can't find input data, which means need transfer data from interface"),
+      "[TA::executor.rs::prepare_data()] can't find input data, which means need data from transport interface"),
   }
   let output = expr.output.as_ref().borrow();
   match dm.get_data(&output.id) {
