@@ -29,7 +29,7 @@ pub struct Data {
 }
 
 pub struct DataManager {
-  pub map: HashMap<String, Data>,
+  map: HashMap<String, Data>,
 }
 
 impl DataManager {
