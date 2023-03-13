@@ -5,7 +5,7 @@ use proto::{
   protocol::context::ObliData,
 };
 
-use super::manager::{DATA_MANAGER, Record, Item};
+use super::manager::{Item, Record, DATA_MANAGER};
 
 pub struct DataIterator {
   buf: Arc<Mutex<Vec<u8>>>,
@@ -60,6 +60,7 @@ impl Iterator for DataIterator {
         }
       }
     }
+    self.cur += 1;
     Some(ret)
   }
 }

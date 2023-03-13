@@ -39,7 +39,7 @@ impl<'a> DataWriter<'a> {
           let field = Field::create(
             fbb,
             &FieldArgs {
-              value_type: FieldUnion::DoubleValue,
+              value_type: FieldUnion::StringValue,
               value: Some(str.as_union_value()),
               is_null: false,
             },
@@ -58,16 +58,18 @@ impl<'a> DataWriter<'a> {
           );
           field_vec.push(field);
         }
+        // @todo return error if not match
+        _ => {}
       }
-      let field_vec = fbb.create_vector(&field_vec);
-      let row_value = Row::create(
-        fbb,
-        &RowArgs {
-          fields: Some(field_vec),
-        },
-      );
-      self.row_vec.push(row_value);
     }
+    let field_vec = fbb.create_vector(&field_vec);
+    let row_value = Row::create(
+      fbb,
+      &RowArgs {
+        fields: Some(field_vec),
+      },
+    );
+    self.row_vec.push(row_value);
   }
 
   pub fn finish(&mut self) -> &[u8] {

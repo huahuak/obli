@@ -9,12 +9,15 @@ use proto::sync::UPSafeCell;
 
 use crate::logger::LOGGER;
 
+#[derive(Debug)]
 pub enum Item {
   Int(i32),
   Str(String),
   Double(f64),
 }
 
+
+#[derive(Debug)]
 pub struct Record {
   pub items: Vec<Item>,
 }
@@ -26,7 +29,7 @@ pub struct Data {
 }
 
 pub struct DataManager {
-  map: HashMap<String, Data>,
+  pub map: HashMap<String, Data>,
 }
 
 impl DataManager {

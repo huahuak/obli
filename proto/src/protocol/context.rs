@@ -88,7 +88,7 @@ pub struct Context {
 pub struct SortOrderInfo {
   pub position: i32,
   // 1 is aescending, -1 is descending
-  pub directio: i32,
+  pub direction: i32,
 }
 
 // ------------------ only use in client and ta ------------------ //
