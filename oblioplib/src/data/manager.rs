@@ -1,6 +1,8 @@
 use std::{
   collections::HashMap,
+  path,
   sync::{Arc, Mutex},
+  vec,
 };
 
 use lazy_static::lazy_static;
@@ -9,17 +11,41 @@ use proto::sync::UPSafeCell;
 
 use crate::logger::LOGGER;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Item {
   Int(i32),
   Str(String),
   Double(f64),
 }
 
-
 #[derive(Debug)]
 pub struct Record {
   pub items: Vec<Item>,
+}
+
+impl Record {
+  pub fn union(&self, other: &Record) -> Record {
+    let mut ret = Record { items: vec![] };
+    for ele in &self.items {
+      ret.items.push(ele.clone());
+    }
+    for ele in &other.items {
+      ret.items.push(ele.clone());
+    }
+    ret
+  }
+
+  pub fn gen_dummy_with_same_schema(&self) -> Record {
+    let mut ret = Record { items: vec![] };
+    for ele in &self.items {
+      ret.items.push(match ele {
+        Item::Int(_) => Item::Int(0),
+        Item::Str(_) => Item::Str("null".to_string()),
+        Item::Double(_) => Item::Double(0.0),
+      });
+    }
+    ret
+  }
 }
 
 #[derive(Debug)]

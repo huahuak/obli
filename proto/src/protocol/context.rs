@@ -91,6 +91,10 @@ pub struct SortOrderInfo {
   pub direction: i32,
 }
 
+pub struct JoinKeyInfo {
+  pub position: i32,
+}
+
 // ------------------ only use in client and ta ------------------ //
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TaCallerInfo {
