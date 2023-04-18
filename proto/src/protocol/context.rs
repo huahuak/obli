@@ -56,15 +56,18 @@ impl ObliData {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum ExprType {
+  DATA,
   MOD,
   HASH,
   SORT,
+  EQUIJOIN,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
 pub enum ExtraExprInfo {
   SortOrder,
   ModNumber,
+  EquiJoinKey,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -72,7 +75,6 @@ pub struct Expression {
   pub id: String,
   pub typ: ExprType,
   // @audit here is bug, input and output is copy because of serialization, need ref instead of copy
-  pub input: Rc<RefCell<ObliData>>,
   pub output: Rc<RefCell<ObliData>>,
   pub children: Vec<Expression>,
   pub info: HashMap<ExtraExprInfo, String>,
@@ -91,8 +93,11 @@ pub struct SortOrderInfo {
   pub direction: i32,
 }
 
+// ------------------ only use in client and ta ------------------ //
+#[derive(Deserialize, Serialize, Debug)]
 pub struct JoinKeyInfo {
-  pub position: i32,
+  pub lpos: i32,
+  pub rpos: i32,
 }
 
 // ------------------ only use in client and ta ------------------ //

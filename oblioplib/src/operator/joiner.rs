@@ -1,5 +1,5 @@
 use core::str;
-use std::vec;
+use std::{any::Any, collections::HashMap, vec};
 
 use proto::protocol::context::{JoinKeyInfo, ObliData};
 
@@ -8,6 +8,10 @@ use crate::data::{
   reader::DataIterator,
   writer::DataWriter,
 };
+
+use super::ctx::ContinuousCompute;
+
+const KEY: &str = "testkey";
 
 /**
  * @author kahua.li
@@ -20,15 +24,25 @@ pub struct JoinManager {
   buffer: Vec<Record>,
   right_iter: Option<DataIterator>,
   join_key: Vec<JoinKeyInfo>,
+
+  stash_map: HashMap<&'static str, Box<dyn Any>>, // stash some value in context
+}
+
+impl ContinuousCompute for JoinManager {
+  fn contine_compute(&mut self, vals: &mut HashMap<&'static str, Box<dyn Any>>) {
+    // @todo handle the error.
+    vals.get(KEY).unwrap();
+  }
 }
 
 impl JoinManager {
-  pub fn new(join_key: Vec<JoinKeyInfo>) -> Self {
+  pub fn new(join_key: Vec<JoinKeyInfo>, stash_map: HashMap<&'static str, Box<dyn Any>>) -> Self {
     Self {
-      output_size: 1000,
+      output_size: 5,
       buffer: vec![],
       right_iter: None,
       join_key,
+      stash_map,
     }
   }
   /// Join two table and return fixed size
@@ -40,26 +54,41 @@ impl JoinManager {
 
     fn merge_join_scan(jm: &mut JoinManager, left_record: &Record) -> Result<Vec<Record>, String> {
       let mut ans: Vec<Record> = vec![];
-      loop {
-        if let Some(right_iter) = &mut jm.right_iter {
+      if let Some(mut right_iter) = jm.right_iter.clone() {
+        loop {
           match right_iter.next() {
             Some(right_record) => {
               // @todo now only support one join key
-              let join_key = jm.join_key[0].position as usize;
-              if right_record.items[join_key] == left_record.items[join_key] {
-                ans.push(right_record.union(left_record));
+              let lpos = jm.join_key[0].lpos as usize;
+              let rpos = jm.join_key[0].rpos as usize;
+              let cmp = left_record.items[lpos]
+                .partial_cmp(&right_record.items[rpos])
+                .unwrap();
+              match cmp {
+                std::cmp::Ordering::Equal => {
+                  ans.push(left_record.union(&right_record));
+                }
+                std::cmp::Ordering::Less => {
+                  jm.right_iter.as_mut().unwrap().cur = right_iter.cur - 1;
+                  return Ok(ans);
+                }
+                std::cmp::Ordering::Greater => {
+                  continue;
+                }
               }
             }
             None => {
               // right iterator is empty, return error
               // change new right block or end join operation
-              return Err(String::from("empty right iterator"));
+              jm.stash_map.insert(KEY, Box::new("test ok"));
+              break;
+              // @todo here need to get new right block from spark
+              // return Err(String::from("empty right iterator"));
             }
           }
-        } else {
-          break;
         }
-      }
+      };
+
       Ok(ans)
     }
 
@@ -73,12 +102,6 @@ impl JoinManager {
             while result.len() > 0 {
               self.buffer.push(result.pop().unwrap());
             }
-            while ret.len() < ret.capacity() && self.buffer.len() > 0 {
-              ret.push(self.buffer.pop().unwrap());
-            }
-            while ret.len() > 0 && ret.len() < ret.capacity() {
-              ret.push(ret.get(0).unwrap().gen_dummy_with_same_schema());
-            }
           }
           Err(_e) => {
             return Err("right iterator is empty, need new right block");
@@ -86,6 +109,12 @@ impl JoinManager {
           }
         };
       } else {
+        while ret.len() < ret.capacity() && self.buffer.len() > 0 {
+          ret.push(self.buffer.pop().unwrap());
+        }
+        while ret.len() > 0 && ret.len() < ret.capacity() {
+          ret.push(ret.get(0).unwrap().gen_dummy_with_same_schema());
+        }
         break;
       }
     }
@@ -109,6 +138,7 @@ impl JoinManager {
   }
 
   pub fn registry_right_block(&mut self, right: &ObliData) -> Result<(), &'static str> {
+    self.right_iter = Some(DataIterator::new(right));
     Ok(())
   }
 }

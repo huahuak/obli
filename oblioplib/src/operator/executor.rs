@@ -1,17 +1,14 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc, vec};
 
 use proto::protocol::context::{
   Context,
-  ExprType::{HASH, SORT},
-  Expression, ExtraExprInfo, SortOrderInfo,
+  ExprType::{DATA, EQUIJOIN, HASH, MOD, SORT},
+  Expression, ExtraExprInfo, JoinKeyInfo, SortOrderInfo,
 };
 
 use crate::data::manager::DATA_MANAGER;
 
-use super::{
-  hasher::hash_exec,
-  sorter::{sort_exec},
-};
+use super::{hasher::hash_exec, joiner::JoinManager, sorter::sort_exec};
 
 /**
  * @author kahua.li
@@ -24,12 +21,15 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
     execute(&child)?;
   }
   let mut dm = DATA_MANAGER.exclusive_access();
-  let input = Arc::clone(
-    &dm
-      .get_data(&expr.input.as_ref().borrow().id)
-      .unwrap()
-      .description,
-  );
+  let mut inputs = vec![];
+  for ele in &expr.children {
+    inputs.push(Arc::clone(
+      &dm
+        .get_data(&ele.output.as_ref().borrow().id)
+        .unwrap()
+        .description,
+    ));
+  }
   let output = Arc::clone(
     &dm
       .get_data_mut(&expr.output.as_ref().borrow().id)
@@ -38,10 +38,12 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
   );
   drop(dm);
 
-  if !input.lock().unwrap().prepared {
-    return Err("[hasher.rs::hash_exec()] input isn't prepared !!!");
+  for input in &inputs {
+    if !input.lock().unwrap().prepared {
+      return Err("[hasher.rs::hash_exec()] input isn't prepared !!!");
+    }
+    input.lock().unwrap().decrease_in_use()?;
   }
-  input.lock().unwrap().decrease_in_use()?;
 
   // the expr has been executed by other tree
   if output.lock().unwrap().prepared {
@@ -51,12 +53,30 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
   match expr.typ {
     // MOD => {}
     HASH => {
-      hash_exec(&input.lock().unwrap(), &output.lock().unwrap())?;
+      hash_exec(
+        &inputs.get(0).unwrap().lock().unwrap(),
+        &output.lock().unwrap(),
+      )?;
     }
     SORT => {
       let sort_order_str = expr.info.get(&ExtraExprInfo::SortOrder).unwrap();
       let ordering: Vec<SortOrderInfo> = serde_json::from_str(&sort_order_str).unwrap();
-      sort_exec(&input.lock().unwrap(), &output.lock().unwrap(), ordering)?;
+      sort_exec(
+        &inputs.get(0).unwrap().lock().unwrap(),
+        &output.lock().unwrap(),
+        ordering,
+      )?;
+    }
+    EQUIJOIN => {
+      let join_key_info_str = expr.info.get(&ExtraExprInfo::EquiJoinKey).unwrap();
+      let join_key_info: Vec<JoinKeyInfo> = serde_json::from_str(&join_key_info_str).unwrap();
+      // @todo add continuous computing support
+      let mut jm = JoinManager::new(join_key_info, HashMap::new());
+      jm.registry_right_block(&inputs.get(1).unwrap().lock().unwrap())?;
+      jm.join_exec(
+        &inputs.get(0).unwrap().lock().unwrap(),
+        &output.lock().unwrap(),
+      )?;
     }
     _ => {
       return Err("[executor.rs::execute()] expr typ of {:#?} is unsupported !!!");
@@ -73,18 +93,22 @@ fn prepare_data(expr: &Expression) -> Result<(), &'static str> {
     prepare_data(child)?;
   }
   let mut dm = DATA_MANAGER.exclusive_access();
-  let input = expr.input.as_ref().borrow();
-  match dm.get_data_mut(&input.id) {
-    Some(target) => target.description.lock().unwrap().increase_in_use(),
-    None => return Err(
-      "[TA::executor.rs::prepare_data()] can't find input data, which means need data from transport interface"),
-  }
-  let output = expr.output.as_ref().borrow();
-  match dm.get_data(&output.id) {
-    None => {
-      dm.insert(&output.id, &output, &vec![], false)?;
+  match expr.typ {
+    DATA => {
+      // data node output is input.
+      let input = expr.output.as_ref().borrow();
+      match dm.get_data_mut(&input.id) {
+        Some(target) => target.description.lock().unwrap().increase_in_use(),
+        None => return Err(
+          "[TA::executor.rs::prepare_data()] can't find input data, which means need data from transport interface"),
+      }
     }
-    Some(_) => {}
+    _ => {
+      let output = expr.output.as_ref().borrow();
+      if let None = dm.get_data(&output.id) {
+        dm.insert(&output.id, &output, &vec![], false)?;
+      }
+    }
   }
   drop(dm);
   Ok(())
