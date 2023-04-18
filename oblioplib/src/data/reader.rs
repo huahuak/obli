@@ -9,7 +9,7 @@ use super::manager::{Item, Record, DATA_MANAGER};
 
 pub struct DataIterator {
   buf: Arc<Mutex<Vec<u8>>>,
-  cur: usize,
+  pub cur: usize,
   size: usize,
 }
 
@@ -75,5 +75,15 @@ impl From<&mut DataIterator> for Vec<Record> {
       }
     }
     ret
+  }
+}
+
+impl Clone for DataIterator {
+  fn clone(&self) -> Self {
+    Self {
+      buf: Arc::clone(&self.buf),
+      cur: self.cur,
+      size: self.size,
+    }
   }
 }

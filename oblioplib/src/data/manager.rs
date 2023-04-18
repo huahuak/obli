@@ -1,4 +1,5 @@
 use std::{
+  cmp::Ordering,
   collections::HashMap,
   path,
   sync::{Arc, Mutex},
@@ -16,6 +17,19 @@ pub enum Item {
   Int(i32),
   Str(String),
   Double(f64),
+}
+
+impl PartialOrd for Item {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    match (self, other) {
+      (Item::Int(a), Item::Int(b)) => a.partial_cmp(b),
+      (Item::Str(a), Item::Str(b)) => a.partial_cmp(b),
+      (Item::Double(a), Item::Double(b)) => a.partial_cmp(b),
+      _ => {
+        None
+      }
+    }
+  }
 }
 
 #[derive(Debug)]
