@@ -1,7 +1,15 @@
 use core::str;
-use std::{any::Any, collections::HashMap, vec};
+use std::{
+  any::Any,
+  borrow::BorrowMut,
+  cmp::Ordering::{Equal, Greater, Less},
+  vec,
+};
 
-use proto::protocol::context::{JoinKeyInfo, ObliData};
+use proto::{
+  config,
+  protocol::context::{JoinKeyInfo, ObliData},
+};
 
 use crate::data::{
   manager::{Record, DATA_MANAGER},
@@ -11,8 +19,6 @@ use crate::data::{
 
 use super::ctx::ContinuousCompute;
 
-const KEY: &str = "testkey";
-
 /**
  * @author kahua.li
  * @email moflowerlkh@gmail.com
@@ -20,112 +26,78 @@ const KEY: &str = "testkey";
  **/
 
 pub struct JoinManager {
-  output_size: usize,
-  buffer: Vec<Record>,
-  right_iter: Option<DataIterator>,
+  output_size: usize,  // every output block size
+  buffer: Vec<Record>, // use to cache output
   join_key: Vec<JoinKeyInfo>,
-
-  stash_map: HashMap<&'static str, Box<dyn Any>>, // stash some value in context
-}
-
-impl ContinuousCompute for JoinManager {
-  fn contine_compute(&mut self, vals: &mut HashMap<&'static str, Box<dyn Any>>) {
-    // @todo handle the error.
-    vals.get(KEY).unwrap();
-  }
+  // left input
+  l_cur_record: Option<Record>,
+  l_records: Vec<Record>,
+  // right input
+  r_begin: usize,
+  r_current: usize,
+  r_records: Vec<Record>,
+  // output
+  output_block: Option<ObliData>,
 }
 
 impl JoinManager {
-  pub fn new(join_key: Vec<JoinKeyInfo>, stash_map: HashMap<&'static str, Box<dyn Any>>) -> Self {
+  pub fn new(join_key: Vec<JoinKeyInfo>) -> Self {
     Self {
-      output_size: 5,
+      output_size: config::OUTPUT_SIZE, // @todo parameterization
       buffer: vec![],
-      right_iter: None,
       join_key,
-      stash_map,
+      l_cur_record: None,
+      l_records: vec![],
+      r_begin: 0,
+      r_current: 0,
+      r_records: vec![],
+      output_block: None,
     }
   }
-  /// Join two table and return fixed size
-  /// This function will return an error if need to change next block.
-  /// left is normal table, and right is secure table !!!
-  pub fn join_exec(&mut self, left: &ObliData, output: &ObliData) -> Result<(), &'static str> {
-    let mut left_iter = DataIterator::new(left);
-    let mut ret: Vec<Record> = Vec::with_capacity(self.output_size);
 
-    fn merge_join_scan(jm: &mut JoinManager, left_record: &Record) -> Result<Vec<Record>, String> {
-      let mut ans: Vec<Record> = vec![];
-      if let Some(mut right_iter) = jm.right_iter.clone() {
-        loop {
-          match right_iter.next() {
-            Some(right_record) => {
-              // @todo now only support one join key
-              let lpos = jm.join_key[0].lpos as usize;
-              let rpos = jm.join_key[0].rpos as usize;
-              let cmp = left_record.items[lpos]
-                .partial_cmp(&right_record.items[rpos])
-                .unwrap();
-              match cmp {
-                std::cmp::Ordering::Equal => {
-                  ans.push(left_record.union(&right_record));
-                }
-                std::cmp::Ordering::Less => {
-                  jm.right_iter.as_mut().unwrap().cur = right_iter.cur - 1;
-                  return Ok(ans);
-                }
-                std::cmp::Ordering::Greater => {
-                  continue;
-                }
-              }
-            }
-            None => {
-              // right iterator is empty, return error
-              // change new right block or end join operation
-              jm.stash_map.insert(KEY, Box::new("test ok"));
-              break;
-              // @todo here need to get new right block from spark
-              // return Err(String::from("empty right iterator"));
-            }
-          }
-        }
-      };
+  pub fn registry_output_block(&mut self, output: ObliData) -> Result<(), &'static str> {
+    self.output_block = Some(output);
+    Ok(())
+  }
 
-      Ok(ans)
+  pub fn registry_left_block(&mut self, left: ObliData) -> Result<(), &'static str> {
+    let mut new_record = DataIterator::new(&left).borrow_mut().into();
+    self.l_records.append(&mut new_record);
+    Ok(())
+  }
+
+  pub fn registry_right_block(&mut self, right: ObliData) -> Result<(), &'static str> {
+    // first, remove old record.
+    self.r_records.drain(0..self.r_begin);
+    self.r_current -= self.r_begin;
+    self.r_begin = 0;
+    // second, append new record.
+    let mut new_record: Vec<Record> = DataIterator::new(&right).borrow_mut().into();
+    self.r_records.append(&mut new_record);
+    Ok(())
+  }
+
+  fn output(&mut self, result: Vec<Record>) -> Result<(), &'static str> {
+    if result.len() == 0 {
+      return Ok(());
     }
-
-    loop {
-      if let Some(record) = left_iter.next() {
-        match merge_join_scan(self, &record) {
-          Ok(mut result) => {
-            while ret.len() < ret.capacity() && result.len() > 0 {
-              ret.push(result.pop().unwrap());
-            }
-            while result.len() > 0 {
-              self.buffer.push(result.pop().unwrap());
-            }
-          }
-          Err(_e) => {
-            return Err("right iterator is empty, need new right block");
-            // right block is empty, need new right block
-          }
-        };
-      } else {
-        while ret.len() < ret.capacity() && self.buffer.len() > 0 {
-          ret.push(self.buffer.pop().unwrap());
-        }
-        while ret.len() > 0 && ret.len() < ret.capacity() {
-          ret.push(ret.get(0).unwrap().gen_dummy_with_same_schema());
-        }
-        break;
-      }
-    }
+    // while result.len() > self.output_size {
+    //   self.buffer.push(result.pop().unwrap())
+    // }
+    // while result.len() < self.output_size && self.buffer.len() > 0 {
+    //   result.push(self.buffer.pop().unwrap());
+    // }
+    // while result.len() < self.output_size {
+    //   result.push(result.get(0).unwrap().gen_dummy_with_same_schema());
+    // }
 
     let mut writer = DataWriter::new();
-    ret.iter().for_each(|record| writer.write(record));
+    result.iter().for_each(|record| writer.write(record));
     let byt_buf = writer.finish();
 
     let mut dm = DATA_MANAGER.exclusive_access();
     // push fbs buf_result to output data
-    if let Some(data) = dm.get_data_mut(&output.id) {
+    if let Some(data) = dm.get_data_mut(&self.output_block.as_ref().unwrap().id) {
       byt_buf
         .iter()
         .for_each(|item| data.buffer.lock().unwrap().push(*item));
@@ -136,9 +108,61 @@ impl JoinManager {
 
     Ok(())
   }
+}
 
-  pub fn registry_right_block(&mut self, right: &ObliData) -> Result<(), &'static str> {
-    self.right_iter = Some(DataIterator::new(right));
-    Ok(())
+impl ContinuousCompute for JoinManager {
+  /// return value:
+  /// true is need continue compute,
+  /// false is finish compute.
+  fn compute(&mut self) -> Result<bool, &'static str> {
+    let mut result = vec![];
+    let mut cnt = 0;
+    loop {
+      cnt += 1;
+      // current left record is none, move to next record.
+      // if the current is some, then continue last computation.
+      if self.l_cur_record.is_none() {
+        self.l_cur_record = if self.l_records.is_empty() {
+          None
+        } else {
+          Some(self.l_records.remove(0))
+        };
+        self.r_current = self.r_begin;
+      }
+      // the right or left records is none.
+      if self.r_current >= self.r_records.len() || self.l_cur_record.is_none() {
+        break;
+      }
+      // @todo now only support one join key
+      let l_record = self.l_cur_record.as_ref().unwrap();
+      let r_record = &self.r_records[self.r_current];
+      let l = &l_record.items[self.join_key.first().unwrap().lpos as usize];
+      let r = &r_record.items[self.join_key.first().unwrap().rpos as usize];
+      match l.partial_cmp(&r) {
+        Some(cmp) => match cmp {
+          Equal => {
+            result.push(l_record.union(&r_record));
+            self.r_current += 1;
+          }
+          Greater => {
+            // the left is greater, just move the right to the next one;
+            self.r_begin += 1;
+            self.r_current = self.r_begin;
+          }
+          Less => {
+            // resume r_current, set l_cur_record None then loop will move to the next one.
+            self.l_cur_record = None;
+          }
+        },
+        None => return Err("TA::joiner::compute() l and r record partial_cmp panic!!!"),
+      }
+    }
+    println!("do {} loop", cnt);
+    self.output(result)?;
+    Ok(true)
+  }
+
+  fn as_any(&mut self) -> &mut dyn Any {
+    self
   }
 }

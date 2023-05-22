@@ -1,5 +1,5 @@
 use flatbuffers::{FlatBufferBuilder, WIPOffset};
-use proto::collection::vector_generated::org::kaihua::obliop::collection::fbs::*;
+use proto::{collection::vector_generated::org::kaihua::obliop::collection::fbs::*, config};
 
 use super::manager::{Item, Record};
 
@@ -11,7 +11,7 @@ pub struct DataWriter<'a> {
 impl<'a> DataWriter<'a> {
   pub fn new() -> DataWriter<'a> {
     DataWriter {
-      fbb: flatbuffers::FlatBufferBuilder::with_capacity(1024),
+      fbb: flatbuffers::FlatBufferBuilder::with_capacity(config::BLOCK_SIZE),
       row_vec: vec![],
     }
   }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, vec};
+use std::{sync::Arc, vec};
 
 use proto::protocol::context::{
   Context,
@@ -8,7 +8,12 @@ use proto::protocol::context::{
 
 use crate::data::manager::DATA_MANAGER;
 
-use super::{hasher::hash_exec, joiner::JoinManager, sorter::sort_exec};
+use super::{
+  ctx::{ContinuousCompute, CTX_MANAGER},
+  hasher::hash_exec,
+  joiner::JoinManager,
+  sorter::sort_exec,
+};
 
 /**
  * @author kahua.li
@@ -68,15 +73,26 @@ pub fn execute(expr: &Expression) -> Result<(), &'static str> {
       )?;
     }
     EQUIJOIN => {
-      let join_key_info_str = expr.info.get(&ExtraExprInfo::EquiJoinKey).unwrap();
-      let join_key_info: Vec<JoinKeyInfo> = serde_json::from_str(&join_key_info_str).unwrap();
-      // @todo add continuous computing support
-      let mut jm = JoinManager::new(join_key_info, HashMap::new());
-      jm.registry_right_block(&inputs.get(1).unwrap().lock().unwrap())?;
-      jm.join_exec(
-        &inputs.get(0).unwrap().lock().unwrap(),
-        &output.lock().unwrap(),
-      )?;
+      // @audit need to remove Ctx in CTX_MANAGER!!!
+      let mut cm = CTX_MANAGER.exclusive_access();
+      if let Some(ctx) = cm.find(&expr.id) {
+        // continuous computing in this branch
+        let jm = ctx.member.as_any().downcast_mut::<JoinManager>().unwrap();
+        jm.registry_left_block(inputs.get(0).unwrap().lock().unwrap().to_owned())?;
+        jm.registry_right_block(inputs.get(1).unwrap().lock().unwrap().to_owned())?;
+        jm.registry_output_block(output.lock().unwrap().to_owned())?;
+        ctx.contine_compute()?;
+      } else {
+        // first, enter this branch
+        let join_key_info_str = expr.info.get(&ExtraExprInfo::EquiJoinKey).unwrap();
+        let join_key_info: Vec<JoinKeyInfo> = serde_json::from_str(&join_key_info_str).unwrap();
+        let mut jm = JoinManager::new(join_key_info);
+        jm.registry_left_block(inputs.get(0).unwrap().lock().unwrap().to_owned())?;
+        jm.registry_right_block(inputs.get(1).unwrap().lock().unwrap().to_owned())?;
+        jm.registry_output_block(output.lock().unwrap().to_owned())?;
+        jm.compute()?;
+        cm.insert(&expr.id, Box::new(jm));
+      };
     }
     _ => {
       return Err("[executor.rs::execute()] expr typ of {:#?} is unsupported !!!");

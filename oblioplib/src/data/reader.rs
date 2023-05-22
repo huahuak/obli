@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+  ptr::read,
+  sync::{Arc, Mutex},
+};
 
 use proto::{
   collection::vector_generated::org::kaihua::obliop::collection::fbs::{FieldUnion, RowTable},
@@ -67,14 +70,41 @@ impl Iterator for DataIterator {
 
 impl From<&mut DataIterator> for Vec<Record> {
   fn from(iter: &mut DataIterator) -> Self {
-    let mut ret = vec![];
-    loop {
-      match iter.next() {
-        Some(r) => ret.push(r),
-        None => break,
+    let mut all = vec![];
+
+    let mut cur = 0;
+    let size = iter.size;
+    let buf = iter.buf.lock().unwrap();
+    let row_table = flatbuffers::root::<RowTable>(buf.as_ref())
+      .unwrap()
+      .rows()
+      .unwrap();
+    while cur < size {
+      let mut ret = Record { items: vec![] };
+      for field in row_table.get(cur).fields().unwrap() {
+        match field.value_type() {
+          FieldUnion::IntValue => {
+            let i = field.value_as_int_value().unwrap().value();
+            ret.items.push(Item::Int(i))
+          }
+          FieldUnion::StringValue => {
+            let s = field.value_as_string_value().unwrap().value().unwrap();
+            ret.items.push(Item::Str(String::from(s)));
+          }
+          FieldUnion::DoubleValue => {
+            let f = field.value_as_double_value().unwrap().value();
+            ret.items.push(Item::Double(f));
+          }
+          _ => {
+            panic!("[ta::getter.rs::next()] type not found implement")
+          }
+        }
       }
+      cur += 1;
+      all.push(ret);
     }
-    ret
+
+    all
   }
 }
 

@@ -39,9 +39,7 @@ impl ObliData {
     }
     Ok(())
   }
-}
-
-impl ObliData {
+  
   pub fn empty_with_uuid(uuid: &String) -> ObliData {
     ObliData {
       name: String::new(),
@@ -82,6 +80,7 @@ pub struct Expression {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Context {
+  pub id: String,
   pub expressions: Vec<Expression>,
 }
 
@@ -93,7 +92,6 @@ pub struct SortOrderInfo {
   pub direction: i32,
 }
 
-// ------------------ only use in client and ta ------------------ //
 #[derive(Deserialize, Serialize, Debug)]
 pub struct JoinKeyInfo {
   pub lpos: i32,

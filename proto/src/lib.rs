@@ -22,6 +22,7 @@ pub mod collection;
 pub mod protocol;
 pub mod sync;
 pub mod util;
+pub mod config;
 
 
 #[derive(Deserialize, Serialize, Debug)]
